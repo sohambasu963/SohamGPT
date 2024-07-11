@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from openai import ChatCompletion
+from openai import OpenAI
+
+client = OpenAI()
 import uvicorn
 import logging
 import json
@@ -49,13 +51,11 @@ conversation_history = [
 @app.get("/")
 async def root(message: str):
     try:
-        completion = ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                *conversation_history,
-                {"role": "user", "content": message}
-            ]
-        )
+        completion = client.chat.completions.create(model="gpt-4o",
+        messages=[
+            *conversation_history,
+            {"role": "user", "content": message}
+        ])
         response_message = completion.choices[0].message['content']
 
         conversation_history.append({"role": "user", "content": message})
@@ -65,8 +65,8 @@ async def root(message: str):
     except Exception as e:
         logging.error(f"Error occurred: {e}")
         return {"error": str(e)}
-    
-    
+
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="localhost", port=8000)
