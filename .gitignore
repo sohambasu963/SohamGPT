@@ -1,4 +1,6 @@
 .env
-tweets.py
+venv/
+__pycache__
+
 tweets.json
 Soham_Basu_Resume.pdf
