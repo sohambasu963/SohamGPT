@@ -56,7 +56,7 @@ async def root(message: str):
             *conversation_history,
             {"role": "user", "content": message}
         ])
-        response_message = completion.choices[0].message['content']
+        response_message = completion.choices[0].message.content
 
         conversation_history.append({"role": "user", "content": message})
         conversation_history.append({"role": "assistant", "content": response_message})
