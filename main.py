@@ -1,12 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from openai import OpenAI
-
-client = OpenAI()
 import uvicorn
 import logging
 import json
 import PyPDF2
+
 
 app = FastAPI()
 
@@ -17,6 +17,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+client = OpenAI()
 
 
 def load_tweets(filename: str):
@@ -48,23 +50,33 @@ conversation_history = [
     {"role": "system", "content": f"When responding to factual questions, use the information from {name}'s resume. Here is the text from the resume: " + resume_text}
 ]
 
-@app.get("/")
-async def root(message: str):
+async def generate_response(message: str):
     try:
-        completion = client.chat.completions.create(model="gpt-4o",
-        messages=[
+        completion = client.chat.completions.create(model="gpt-4", messages=[
             *conversation_history,
             {"role": "user", "content": message}
-        ])
-        response_message = completion.choices[0].message.content
+        ], stream=True)
+
+        full_response = ""
+
+        async for chunk in completion:
+            if "choices" in chunk:
+                for choice in chunk["choices"]:
+                    if "delta" in choice and "content" in choice["delta"]:
+                        part = choice["delta"]["content"]
+                        full_response += part
+                        yield part
 
         conversation_history.append({"role": "user", "content": message})
-        conversation_history.append({"role": "assistant", "content": response_message})
+        conversation_history.append({"role": "assistant", "content": full_response})
 
-        return response_message
     except Exception as e:
         logging.error(f"Error occurred: {e}")
-        return {"error": str(e)}
+        yield f"Error: {e}"
+
+@app.get("/")
+async def root(message: str):
+    return StreamingResponse(generate_response(message), media_type="text/plain")
 
 
 
